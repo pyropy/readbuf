@@ -1,0 +1,4 @@
+.vscode/
+*.lz4
+readbuf
+*.json

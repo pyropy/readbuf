@@ -1,0 +1,3 @@
+[submodule "submodules/streaming_protobuf"]
+	path = submodules/streaming_protobuf
+	url = https://github.com/bitquery/streaming_protobuf
