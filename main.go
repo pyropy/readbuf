@@ -33,7 +33,7 @@ func main() {
 }
 
 func read(path string) (decompressed []byte, err error) {
-	var data io.Reader
+	var data io.ReadCloser
 
 	if isUrl(path) {
 		data, err = streamFile(path)
@@ -47,6 +47,8 @@ func read(path string) (decompressed []byte, err error) {
 		}
 	}
 
+	defer data.Close()
+
 	decompressed, err = io.ReadAll(lz4.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func read(path string) (decompressed []byte, err error) {
 	return decompressed, nil
 }
 
-func streamFile(url string) (io.Reader, error) {
+func streamFile(url string) (io.ReadCloser, error) {
 	r, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -64,7 +66,7 @@ func streamFile(url string) (io.Reader, error) {
 	return r.Body, nil
 }
 
-func readFile(path string) (io.Reader, error) {
+func readFile(path string) (io.ReadCloser, error) {
 	data, err := os.Open(path)
 	if err != nil {
 		return nil, err
