@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/pierrec/lz4"
 	evm_messages "github.com/pyropy/readbuf/evm/messages"
@@ -19,7 +21,7 @@ func main() {
 	}
 
 	app := cli.App{
-		Name:     "debuf",
+		Name:     "readbuf",
 		Commands: local,
 	}
 
@@ -30,18 +32,45 @@ func main() {
 
 }
 
-func read(path string) ([]byte, error) {
-	data, err := os.Open(path)
-	if err != nil {
-		return nil, err
+func read(path string) (decompressed []byte, err error) {
+	var data io.Reader
+
+	if isUrl(path) {
+		data, err = streamFile(path)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		data, err = readFile(path)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	decompressed, err := io.ReadAll(lz4.NewReader(data))
+	decompressed, err = io.ReadAll(lz4.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
 
 	return decompressed, nil
+}
+
+func streamFile(url string) (io.Reader, error) {
+	r, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Body, nil
+}
+
+func readFile(path string) (io.Reader, error) {
+	data, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 var debuf = &cli.Command{
@@ -50,7 +79,7 @@ var debuf = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "path",
-			Usage:    "Path to compressed lz4 file",
+			Usage:    "Path or URL to compressed lz4 file",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -62,6 +91,7 @@ var debuf = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		t := ctx.String("type")
 		path := ctx.String("path")
+
 		data, err := read(path)
 		if err != nil {
 			return err
@@ -121,4 +151,8 @@ func readDexTx(data []byte) (string, error) {
 
 	formatted := protojson.Format(&msg)
 	return formatted, nil
+}
+
+func isUrl(path string) bool {
+	return strings.Contains(path, "http://") || strings.Contains(path, "https://")
 }
